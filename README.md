@@ -6,17 +6,17 @@ Proxy switcher with tiny GUI that points the **official** osu!lazer client at th
 ## CAUTION!!!
 - DO NOT reuse the same password on both servers.
 
-- DO NOT advertise it in official **osu!** chat or forums.
+- DO NOT advertise this repo in official **osu!** chat or forums.
 
 - Make sure proxy is **OFF** when you going to play official server.
 
 - Administrator rights are required (hosts, trusted local certificate). Only run builds you trust.
 
-- If the app crashes (for some reason), run it again and make sure it's on or off — `hosts` may still point `osu.ppy.sh` at `127.0.0.1`.
+- If the app crashes (for some reason), run it again and make sure it's on/off — `hosts` may still point `osu.ppy.sh` at `127.0.0.1`.
 
 - While connected to osudesu, any query routes to osu!bancho are redirected.
 
-- This is **not** `-devserver` and **not** a patch for osu!lazer, **no** any injection to processes or files.
+- This is **not** `-devserver` and **not** a patch for osu!lazer, **no** any injection to processes or files of game.
 
 - If you have any questions or issues, please DM in Discord `pr0t0type_00`.
 
@@ -54,4 +54,4 @@ Output: `build\Release\desuswitch.exe`. Run as Administrator.
 * **Disconnect** when finished.
 
 ### Note
-Project created carefully with some help from Cursor AI.
+The project was created carefully with Cursor AI (Grok) support.
