@@ -236,10 +236,6 @@ void collect_fingerprint() {
             }
         }
         if (!macs.empty()) g_fp.adapters = md5_hex_win(macs);
-        log("fingerprint adapters=%s uninstall=%s disk=%s",
-            g_fp.adapters.empty() ? "-" : "ok",
-            g_fp.uninstall.empty() ? "-" : "ok",
-            g_fp.disk.empty() ? "-" : "ok");
     });
 }
 
@@ -366,14 +362,10 @@ UpstreamResult winhttp_call(const std::wstring& host, INTERNET_PORT port, bool t
         DWORD written = 0;
         sent = WinHttpWriteData(req, body.data(), (DWORD)body.size(), &written);
         if (!sent || written != (DWORD)body.size()) {
-            log("WinHTTP WriteData %s %s wrote %lu/%zu", method.c_str(), path.c_str(),
-                (unsigned long)written, body.size());
             sent = FALSE;
         }
     }
     if (!sent || !WinHttpReceiveResponse(req, nullptr)) {
-        DWORD err = GetLastError();
-        log("WinHTTP %s %s failed (error %lu)", method.c_str(), path.c_str(), (unsigned long)err);
         WinHttpCloseHandle(req);
         WinHttpCloseHandle(conn);
         WinHttpCloseHandle(sess);
@@ -407,10 +399,6 @@ UpstreamResult winhttp_call(const std::wstring& host, INTERNET_PORT port, bool t
         }
         r.body.resize(at + got);
         if (got == 0) break;
-    }
-    if (r.body.size() >= 2 && (unsigned char)r.body[0] == 0x1f && (unsigned char)r.body[1] == 0x8b) {
-        log("WinHTTP left gzip body on %s %s (%zuB) status=%d", method.c_str(), path.c_str(),
-            r.body.size(), r.status);
     }
     WinHttpCloseHandle(req);
     WinHttpCloseHandle(conn);
@@ -510,11 +498,6 @@ std::string dispatch(const std::string& method, const std::string& host_in,
         || starts("/spectator") || starts("/multiplayer") || starts("/metadata")
         || last == "negotiate" || last.rfind("negotiate?", 0) == 0) {
         auto up = proxy_osudesu(method, path, query, headers, body);
-        if (path == "/oauth/token") {
-            std::string ct = headers.count("content-type") ? headers.at("content-type") : "";
-            log("OAuth POST /oauth/token body=%zuB ctype=%s -> %d (%zuB)",
-                body.size(), ct.empty() ? "(none)" : ct.c_str(), up.status, up.body.size());
-        }
         std::vector<std::pair<std::string, std::string>> extra;
         if (up.status == 302) {
             auto loc = up.headers.find("location");
@@ -524,7 +507,6 @@ std::string dispatch(const std::string& method, const std::string& host_in,
         return raw_resp(up.status, ctype, up.body, extra);
     }
 
-    log("Unhandled %s %s -> empty ok", method.c_str(), path.c_str());
     if (method == "GET") return json_text("[]");
     return json_text("{}");
 }
@@ -786,7 +768,6 @@ void proxy_ws_upstream(TlsConn& tls, const std::string& path, const std::string&
     if (!WinHttpSendRequest(req, hdr.empty() ? WINHTTP_NO_ADDITIONAL_HEADERS : hdr.c_str(),
                             hdr.empty() ? 0 : (DWORD)-1, WINHTTP_NO_REQUEST_DATA, 0, 0, 0)
         || !WinHttpReceiveResponse(req, nullptr)) {
-        log("WS upstream negotiate failed path=%s err=%lu", path.c_str(), (unsigned long)GetLastError());
         WinHttpCloseHandle(req);
         WinHttpCloseHandle(conn);
         WinHttpCloseHandle(sess);
@@ -795,12 +776,10 @@ void proxy_ws_upstream(TlsConn& tls, const std::string& path, const std::string&
     HINTERNET ws = WinHttpWebSocketCompleteUpgrade(req, 0);
     WinHttpCloseHandle(req);
     if (!ws) {
-        log("WS upstream upgrade failed path=%s err=%lu", path.c_str(), (unsigned long)GetLastError());
         WinHttpCloseHandle(conn);
         WinHttpCloseHandle(sess);
         return;
     }
-    log("WS upstream connected %s", path.c_str());
 
     std::atomic<bool> run{true};
     std::thread up2down([&]() {
@@ -967,11 +946,6 @@ void handle_client(SOCKET s) {
 
         std::string host = headers.count("host") ? headers["host"] : "";
         std::string upgrade = headers.count("upgrade") ? lower(headers["upgrade"]) : "";
-        sockaddr_in peer{};
-        int plen = sizeof(peer);
-        getpeername(s, (sockaddr*)&peer, &plen);
-        char pip[32]{};
-        inet_ntop(AF_INET, &peer.sin_addr, pip, sizeof(pip));
 
         if (upgrade == "websocket") {
             auto key_it = headers.find("sec-websocket-key");
@@ -985,15 +959,11 @@ void handle_client(SOCKET s) {
                  "Connection: Upgrade\r\nSec-WebSocket-Accept: "
               << accept << "\r\n\r\n";
             tls.write_all(o.str());
-            log("WS %s host=%s peer=%s", path.c_str(), host.c_str(), pip);
             proxy_ws_upstream(tls, path, query, headers, leftover);
             return;
         }
 
         std::string resp = dispatch(method, host, path, query, headers, body);
-        log("%s %s%s host=%s peer=%s body=%zuB cl=%s", method.c_str(), path.c_str(),
-            query.empty() ? "" : (std::string("?") + query).c_str(), host.c_str(), pip,
-            body.size(), cl_s.empty() ? "-" : cl_s.c_str());
         if (!tls.write_all(resp)) return;
         auto c = headers.find("connection");
         if (c != headers.end() && lower(c->second) == "close") return;
@@ -1108,8 +1078,6 @@ bool start_proxy(PCCERT_CONTEXT cert, const std::string& upstream, std::string& 
 
     g_run = true;
     g_thr = std::thread(accept_loop);
-    log("Listening on https://127.0.0.1:%d  upstream %s  avatars %s",
-        kListenPort, g_upstream.c_str(), g_avatar_host.c_str());
     return true;
 }
 
@@ -1128,7 +1096,6 @@ void stop_proxy() {
         FreeCredentialsHandle(&g_cred);
         g_cred_ok = false;
     }
-    log("Proxy stopped");
 }
 
 bool proxy_running() { return g_run.load(); }

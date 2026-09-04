@@ -21,7 +21,6 @@ bool connect_now(std::string& err) {
         err = "Already connected";
         return false;
     }
-    log("Connecting to %s", kDefaultUpstream);
     if (!ensure_trusted_cert(g_cert, err)) return false;
     kill_listener_on_443();
     if (!apply_hosts(err)) return false;
@@ -31,7 +30,6 @@ bool connect_now(std::string& err) {
         return false;
     }
     g_connected = true;
-    log("Connected. Launch official osu!lazer and sign in with your osudesu account.");
     return true;
 }
 
@@ -42,12 +40,10 @@ void disconnect_now() {
         restore_hosts(ignored);
         return;
     }
-    log("Disconnecting...");
     stop_proxy();
     std::string err;
     restore_hosts(err);
     g_connected = false;
-    log("Disconnected. osu!lazer will talk to ppy again.");
 }
 
 bool is_connected() {

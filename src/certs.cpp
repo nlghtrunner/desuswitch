@@ -227,7 +227,6 @@ bool ensure_trusted_cert(Cert& out, std::string& err) {
         CertCloseStore(my, 0);
         CertCloseStore(root, 0);
         out.ctx = existing;
-        log("Reusing existing TLS certificate");
         return true;
     }
 
@@ -249,16 +248,13 @@ bool ensure_trusted_cert(Cert& out, std::string& err) {
         CertCloseStore(root, 0);
         return false;
     }
-    if (!CertAddCertificateContextToStore(root, stored, CERT_STORE_ADD_REPLACE_EXISTING, nullptr)) {
-        log("%s", win_error("Warning: could not add cert to Trusted Root").c_str());
-    }
+    CertAddCertificateContextToStore(root, stored, CERT_STORE_ADD_REPLACE_EXISTING, nullptr);
 
     CertFreeCertificateContext(ctx);
     CertCloseStore(my, 0);
     CertCloseStore(root, 0);
 
     out.ctx = stored;
-    log("Installed trusted TLS certificate for osu.ppy.sh");
     return true;
 }
 

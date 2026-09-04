@@ -17,7 +17,6 @@
 #include <ws2tcpip.h>
 #include <windows.h>
 
-#include <cstdarg>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -44,11 +43,6 @@ inline const wchar_t* const kHostNames[] = {
     L"a.ppy.sh",
 };
 inline constexpr int kHostCount = 4;
-
-using LogFn = void (*)(const char* line);
-void set_logger(LogFn fn);
-void log(const char* fmt, ...);
-void log_exe_identity();
 
 std::wstring utf16(const std::string& s);
 std::string utf8(const std::wstring& s);

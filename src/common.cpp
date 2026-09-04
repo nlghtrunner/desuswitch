@@ -4,53 +4,8 @@
 #include <shellapi.h>
 
 #include <cstdio>
-#include <mutex>
 
 namespace oc {
-namespace {
-
-LogFn g_log = nullptr;
-std::mutex g_log_mu;
-
-}  // namespace
-
-void set_logger(LogFn fn) {
-    std::lock_guard<std::mutex> lock(g_log_mu);
-    g_log = fn;
-}
-
-void log(const char* fmt, ...) {
-    char buf[4096];
-    va_list ap;
-    va_start(ap, fmt);
-    vsnprintf(buf, sizeof(buf), fmt, ap);
-    va_end(ap);
-    LogFn fn;
-    {
-        std::lock_guard<std::mutex> lock(g_log_mu);
-        fn = g_log;
-    }
-    if (fn) fn(buf);
-}
-
-void log_exe_identity() {
-    wchar_t path[MAX_PATH]{};
-    if (!GetModuleFileNameW(nullptr, path, MAX_PATH)) {
-        log("desuswitch (path unknown)");
-        return;
-    }
-    WIN32_FILE_ATTRIBUTE_DATA fad{};
-    SYSTEMTIME st{};
-    if (GetFileAttributesExW(path, GetFileExInfoStandard, &fad)) {
-        FILETIME local{};
-        FileTimeToLocalFileTime(&fad.ftLastWriteTime, &local);
-        FileTimeToSystemTime(&local, &st);
-        log("desuswitch  %s  file %04d-%02d-%02d %02d:%02d:%02d",
-            utf8(path).c_str(), st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond);
-    } else {
-        log("desuswitch  %s", utf8(path).c_str());
-    }
-}
 
 std::wstring utf16(const std::string& s) {
     if (s.empty()) return {};

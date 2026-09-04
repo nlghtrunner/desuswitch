@@ -79,7 +79,6 @@ void kill_listener_on_443() {
         if (row.dwOwningPid == 0 || row.dwOwningPid == self) continue;
         HANDLE p = OpenProcess(PROCESS_TERMINATE, FALSE, row.dwOwningPid);
         if (p) {
-            log("Stopping leftover PID %u on port 443", row.dwOwningPid);
             TerminateProcess(p, 0);
             CloseHandle(p);
         }
@@ -104,7 +103,6 @@ bool apply_hosts(std::string& err) {
         return false;
     }
     flush_dns();
-    log("Updated hosts file");
     return true;
 }
 
@@ -114,7 +112,6 @@ bool restore_hosts(std::string& err) {
     if (raw.find(kMarkerBegin) == std::string::npos &&
         raw.find(kMarkerBeginPrev) == std::string::npos &&
         raw.find(kMarkerBeginOld) == std::string::npos) {
-        log("No connector block in hosts file");
         return true;
     }
     std::string next = strip_block(raw);
@@ -125,7 +122,6 @@ bool restore_hosts(std::string& err) {
         return false;
     }
     flush_dns();
-    log("Restored hosts file");
     return true;
 }
 
