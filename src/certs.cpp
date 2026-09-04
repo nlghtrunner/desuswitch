@@ -11,7 +11,7 @@
 namespace oc {
 namespace {
 
-constexpr wchar_t kKeyName[] = L"desupatch-tls";
+constexpr wchar_t kKeyName[] = L"desuswitch-tls";
 
 void set_friendly_name(PCCERT_CONTEXT ctx) {
     std::wstring name = kCertFriendly;
@@ -34,7 +34,7 @@ std::wstring friendly_name(PCCERT_CONTEXT ctx) {
 
 bool is_ours(PCCERT_CONTEXT ctx) {
     auto name = friendly_name(ctx);
-    if (name == kCertFriendly || name == kCertFriendlyOld) return true;
+    if (name == kCertFriendly || name == kCertFriendlyPrev || name == kCertFriendlyOld) return true;
     wchar_t subj[256]{};
     wchar_t iss[256]{};
     CertNameToStrW(X509_ASN_ENCODING, &ctx->pCertInfo->Subject, CERT_X500_NAME_STR, subj, 256);

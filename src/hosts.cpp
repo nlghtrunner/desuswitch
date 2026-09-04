@@ -53,7 +53,9 @@ std::string strip_one(const std::string& raw, const char* begin, const char* end
 }
 
 std::string strip_block(const std::string& raw) {
-    return strip_one(strip_one(raw, kMarkerBegin, kMarkerEnd), kMarkerBeginOld, kMarkerEndOld);
+    return strip_one(
+        strip_one(strip_one(raw, kMarkerBegin, kMarkerEnd), kMarkerBeginPrev, kMarkerEndPrev),
+        kMarkerBeginOld, kMarkerEndOld);
 }
 
 }  // namespace
@@ -110,6 +112,7 @@ bool restore_hosts(std::string& err) {
     const auto path = hosts_path();
     std::string raw = read_file(path);
     if (raw.find(kMarkerBegin) == std::string::npos &&
+        raw.find(kMarkerBeginPrev) == std::string::npos &&
         raw.find(kMarkerBeginOld) == std::string::npos) {
         log("No connector block in hosts file");
         return true;

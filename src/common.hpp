@@ -24,12 +24,15 @@
 
 namespace oc {
 
-inline constexpr wchar_t kAppTitle[] = L"desupatch";
+inline constexpr wchar_t kAppTitle[] = L"desuswitch";
 inline constexpr char kDefaultUpstream[] = "https://osudesu.su";
-inline constexpr wchar_t kCertFriendly[] = L"desupatch";
+inline constexpr wchar_t kCertFriendly[] = L"desuswitch";
+inline constexpr wchar_t kCertFriendlyPrev[] = L"desupatch";
 inline constexpr wchar_t kCertFriendlyOld[] = L"osudesu-lazer-connector";
-inline constexpr char kMarkerBegin[] = "# desupatch BEGIN";
-inline constexpr char kMarkerEnd[] = "# desupatch END";
+inline constexpr char kMarkerBegin[] = "# desuswitch BEGIN";
+inline constexpr char kMarkerEnd[] = "# desuswitch END";
+inline constexpr char kMarkerBeginPrev[] = "# desupatch BEGIN";
+inline constexpr char kMarkerEndPrev[] = "# desupatch END";
 inline constexpr char kMarkerBeginOld[] = "# osudesu-lazer-connector BEGIN";
 inline constexpr char kMarkerEndOld[] = "# osudesu-lazer-connector END";
 inline constexpr int kListenPort = 443;

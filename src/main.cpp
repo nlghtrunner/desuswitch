@@ -219,8 +219,8 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR cmd, int show) {
         oc::Cert cert;
         bool ok = oc::ensure_trusted_cert(cert, err);
         std::wstring path = oc::data_dir() + L"\\self-test.txt";
-        FILE* f = _wfopen(path.c_str(), L"w");
-        if (f) {
+        FILE* f = nullptr;
+        if (_wfopen_s(&f, path.c_str(), L"w") == 0 && f) {
             fprintf(f, "%s\n%s\n", ok ? "OK" : "FAIL", ok ? "certificate ready" : err.c_str());
             fclose(f);
         }
@@ -244,7 +244,7 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR cmd, int show) {
     wc.hInstance = inst;
     wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
     wc.hbrBackground = (HBRUSH)(COLOR_BTNFACE + 1);
-    wc.lpszClassName = L"DesupatchWnd";
+    wc.lpszClassName = L"DesuswitchWnd";
     wc.hIcon = LoadIcon(nullptr, IDI_APPLICATION);
     RegisterClassExW(&wc);
 

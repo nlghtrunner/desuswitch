@@ -36,7 +36,7 @@ void log(const char* fmt, ...) {
 void log_exe_identity() {
     wchar_t path[MAX_PATH]{};
     if (!GetModuleFileNameW(nullptr, path, MAX_PATH)) {
-        log("desupatch (path unknown)");
+        log("desuswitch (path unknown)");
         return;
     }
     WIN32_FILE_ATTRIBUTE_DATA fad{};
@@ -45,10 +45,10 @@ void log_exe_identity() {
         FILETIME local{};
         FileTimeToLocalFileTime(&fad.ftLastWriteTime, &local);
         FileTimeToSystemTime(&local, &st);
-        log("desupatch  %s  file %04d-%02d-%02d %02d:%02d:%02d",
+        log("desuswitch  %s  file %04d-%02d-%02d %02d:%02d:%02d",
             utf8(path).c_str(), st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond);
     } else {
-        log("desupatch  %s", utf8(path).c_str());
+        log("desuswitch  %s", utf8(path).c_str());
     }
 }
 
@@ -72,7 +72,7 @@ std::wstring data_dir() {
     wchar_t path[MAX_PATH]{};
     if (FAILED(SHGetFolderPathW(nullptr, CSIDL_LOCAL_APPDATA, nullptr, 0, path)))
         return L".";
-    std::wstring dir = std::wstring(path) + L"\\desupatch";
+    std::wstring dir = std::wstring(path) + L"\\desuswitch";
     CreateDirectoryW(dir.c_str(), nullptr);
     return dir;
 }
