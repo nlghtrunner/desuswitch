@@ -52,3 +52,6 @@ Output: `build\Release\desuswitch.exe`. Run as Administrator.
 * Press **Connect**.
 * Open osu!lazer and login or register with credentials.
 * **Disconnect** when finished.
+
+### Note
+Project created carefully with some help from Cursor AI.
