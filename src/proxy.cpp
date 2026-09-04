@@ -386,6 +386,19 @@ UpstreamResult winhttp_call(const std::wstring& host, INTERNET_PORT port, bool t
             r.content_type = utf8(ct);
         }
     }
+    {
+        DWORD n = 0;
+        WinHttpQueryHeaders(req, WINHTTP_QUERY_LOCATION, WINHTTP_HEADER_NAME_BY_INDEX,
+                            nullptr, &n, WINHTTP_NO_HEADER_INDEX);
+        if (GetLastError() == ERROR_INSUFFICIENT_BUFFER && n) {
+            std::wstring loc(n / sizeof(wchar_t), L'\0');
+            if (WinHttpQueryHeaders(req, WINHTTP_QUERY_LOCATION, WINHTTP_HEADER_NAME_BY_INDEX,
+                                    loc.data(), &n, WINHTTP_NO_HEADER_INDEX)) {
+                if (!loc.empty() && loc.back() == L'\0') loc.pop_back();
+                r.headers["location"] = utf8(loc);
+            }
+        }
+    }
     for (;;) {
         DWORD avail = 0;
         if (!WinHttpQueryDataAvailable(req, &avail) || avail == 0) break;
@@ -483,6 +496,25 @@ std::string dispatch(const std::string& method, const std::string& host_in,
     if (host == "a.ppy.sh") {
         auto up = proxy_avatars(path, query, headers);
         return raw_resp(up.status, up.content_type.empty() ? "image/png" : up.content_type, up.body);
+    }
+    if (host == "bss.ppy.sh") {
+        std::string rest = path;
+        if (rest.rfind("/d/", 0) == 0) rest = rest.substr(3);
+        else if (!rest.empty() && rest[0] == '/') rest = rest.substr(1);
+        while (!rest.empty()) {
+            char c = rest.back();
+            if (c == 'n' || c == 'N' || c == 'h' || c == 'H') rest.pop_back();
+            else break;
+        }
+        std::string id;
+        for (char c : rest) {
+            if (c >= '0' && c <= '9') id.push_back(c);
+            else break;
+        }
+        if (id.empty()) return json_text("{\"error\":\"beatmap not found\"}", 404);
+        std::vector<std::pair<std::string, std::string>> extra;
+        extra.emplace_back("Location", "https://mirror.hinamizawa.ai/api/v1/hinai/d/" + id);
+        return raw_resp(302, "text/plain", "", extra);
     }
 
     auto last = path;
@@ -729,8 +761,9 @@ std::string ws_frame(int opcode, const std::string& payload) {
     return f;
 }
 
-void proxy_ws_upstream(TlsConn& tls, const std::string& path, const std::string& query,
-                       std::map<std::string, std::string> headers, std::string leftover) {
+bool proxy_ws_upstream(TlsConn& tls, const std::string& path, const std::string& query,
+                       std::map<std::string, std::string> headers, std::string leftover,
+                       const std::string& ws_key) {
     inject_fingerprint(headers);
     std::string host;
     INTERNET_PORT port = 443;
@@ -739,14 +772,14 @@ void proxy_ws_upstream(TlsConn& tls, const std::string& path, const std::string&
 
     HINTERNET sess = WinHttpOpen(L"desuswitch/1.0", WINHTTP_ACCESS_TYPE_NO_PROXY,
                                  WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
-    if (!sess) return;
+    if (!sess) return false;
     WinHttpSetTimeouts(sess, 30000, 30000, 0, 0);
     DWORD protocols = WINHTTP_FLAG_SECURE_PROTOCOL_TLS1_2 | WINHTTP_FLAG_SECURE_PROTOCOL_TLS1_3;
     WinHttpSetOption(sess, WINHTTP_OPTION_SECURE_PROTOCOLS, &protocols, sizeof(protocols));
     HINTERNET conn = WinHttpConnect(sess, utf16(host).c_str(), port, 0);
     if (!conn) {
         WinHttpCloseHandle(sess);
-        return;
+        return false;
     }
     DWORD flags = use_tls ? WINHTTP_FLAG_SECURE : 0;
     HINTERNET req = WinHttpOpenRequest(conn, L"GET", to_wide_path(path, query).c_str(),
@@ -754,7 +787,7 @@ void proxy_ws_upstream(TlsConn& tls, const std::string& path, const std::string&
     if (!req) {
         WinHttpCloseHandle(conn);
         WinHttpCloseHandle(sess);
-        return;
+        return false;
     }
     WinHttpSetOption(req, WINHTTP_OPTION_UPGRADE_TO_WEB_SOCKET, nullptr, 0);
     std::wstring hdr;
@@ -771,14 +804,26 @@ void proxy_ws_upstream(TlsConn& tls, const std::string& path, const std::string&
         WinHttpCloseHandle(req);
         WinHttpCloseHandle(conn);
         WinHttpCloseHandle(sess);
-        return;
+        return false;
     }
     HINTERNET ws = WinHttpWebSocketCompleteUpgrade(req, 0);
     WinHttpCloseHandle(req);
     if (!ws) {
         WinHttpCloseHandle(conn);
         WinHttpCloseHandle(sess);
-        return;
+        return false;
+    }
+
+    std::string accept = ws_accept_key(ws_key);
+    std::ostringstream o;
+    o << "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\n"
+         "Connection: Upgrade\r\nSec-WebSocket-Accept: "
+      << accept << "\r\n\r\n";
+    if (!tls.write_all(o.str())) {
+        WinHttpCloseHandle(ws);
+        WinHttpCloseHandle(conn);
+        WinHttpCloseHandle(sess);
+        return false;
     }
 
     std::atomic<bool> run{true};
@@ -858,6 +903,7 @@ void proxy_ws_upstream(TlsConn& tls, const std::string& path, const std::string&
     WinHttpCloseHandle(ws);
     WinHttpCloseHandle(conn);
     WinHttpCloseHandle(sess);
+    return true;
 }
 
 void handle_client(SOCKET s) {
@@ -953,13 +999,8 @@ void handle_client(SOCKET s) {
                 tls.write_all(text_resp("missing key", 400));
                 return;
             }
-            std::string accept = ws_accept_key(key_it->second);
-            std::ostringstream o;
-            o << "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\n"
-                 "Connection: Upgrade\r\nSec-WebSocket-Accept: "
-              << accept << "\r\n\r\n";
-            tls.write_all(o.str());
-            proxy_ws_upstream(tls, path, query, headers, leftover);
+            if (!proxy_ws_upstream(tls, path, query, headers, leftover, key_it->second))
+                tls.write_all(text_resp("upstream websocket failed", 502));
             return;
         }
 

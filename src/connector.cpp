@@ -5,6 +5,7 @@
 #include "proxy.hpp"
 
 #include <mutex>
+#include <cstdlib>
 
 namespace oc {
 namespace {
@@ -12,8 +13,29 @@ namespace {
 std::mutex g_mu;
 Cert g_cert;
 bool g_connected = false;
+HANDLE g_singleton = nullptr;
+
+LONG WINAPI crash_restore_hosts(EXCEPTION_POINTERS*) {
+    std::string ignored;
+    restore_hosts(ignored);
+    return EXCEPTION_CONTINUE_SEARCH;
+}
 
 }  // namespace
+
+void recover_hosts_on_startup() {
+    g_singleton = CreateMutexW(nullptr, TRUE, L"Local\\desuswitch-singleton");
+    const DWORD already = GetLastError();
+    if (g_singleton && already == ERROR_ALREADY_EXISTS)
+        return;
+    std::string ignored;
+    restore_hosts(ignored);
+    SetUnhandledExceptionFilter(crash_restore_hosts);
+    std::atexit([]() {
+        std::string err;
+        restore_hosts(err);
+    });
+}
 
 bool connect_now(std::string& err) {
     std::lock_guard<std::mutex> lock(g_mu);
