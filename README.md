@@ -8,6 +8,8 @@ Proxy switcher with tiny GUI that points the **official** osu!lazer client at th
 
 - DO NOT advertise this repo in official **osu!** chat or forums.
 
+- DO NOT eat yellow snow.
+
 - Make sure proxy is **OFF** when you going to play official server.
 
 - Administrator rights are required (hosts, trusted local certificate). Only run builds you trust.
